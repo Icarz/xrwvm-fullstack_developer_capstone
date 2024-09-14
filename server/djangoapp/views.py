@@ -1,12 +1,12 @@
 # Uncomment the required imports before adding the code
 
-# from django.shortcuts import render
-# from django.http import HttpResponseRedirect, HttpResponse
-# from django.contrib.auth.models import User
-# from django.shortcuts import get_object_or_404, render, redirect
-# from django.contrib.auth import logout
-# from django.contrib import messages
-# from datetime import datetime
+from django.shortcuts import render
+from django.http import HttpResponseRedirect, HttpResponse
+from django.contrib.auth.models import User
+from django.shortcuts import get_object_or_404, render, redirect
+from django.contrib.auth import logout
+from django.contrib import messages
+from datetime import datetime
 
 from django.http import JsonResponse
 from django.contrib.auth import login, authenticate
@@ -19,8 +19,6 @@ from django.views.decorators.csrf import csrf_exempt
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
 
-
-# Create your views here.
 
 # Create a `login_request` view to handle sign in request
 @csrf_exempt
@@ -39,13 +37,60 @@ def login_user(request):
     return JsonResponse(data)
 
 # Create a `logout_request` view to handle sign out request
-# def logout_request(request):
-# ...
+def logout_request(request):
+    if request.method == 'POST':
+        logout(request)
+        return JsonResponse({"status": "Logged out"})
+    else:
+        return JsonResponse({"error": "Invalid request method"}, status=405)
 
-# Create a `registration` view to handle sign up request
-# @csrf_exempt
 # def registration(request):
-# ...
+@csrf_exempt
+def registration(request):
+    if request.method == 'POST':
+        # Parse the incoming request data
+        data = json.loads(request.body)
+        username = data.get('userName')
+        password = data.get('password')
+        first_name = data.get('firstName')
+        last_name = data.get('lastName')
+        email = data.get('email')
+
+        # Initialize context
+        username_exist = False
+        email_exist = False
+
+        # Check if the username already exists
+        if User.objects.filter(username=username).exists():
+            username_exist = True
+
+        # Check if the email already exists
+        if User.objects.filter(email=email).exists():
+            email_exist = True
+
+        if not username_exist and not email_exist:
+            # Create the user if both username and email are unique
+            user = User.objects.create_user(
+                username=username,
+                first_name=first_name,
+                last_name=last_name,
+                password=password,
+                email=email
+            )
+
+            # Log the user in after registration
+            login(request, user)
+
+            # Return success response
+            data = {"userName": username, "status": "Authenticated"}
+            return JsonResponse(data, status=201)  # 201 Created
+        else:
+            # Return error if user already exists
+            error_message = "Username already exists" if username_exist else "Email already exists"
+            return JsonResponse({"error": error_message}, status=400)  # 400 Bad Request
+    else:
+        # If the request method is not POST
+        return JsonResponse({"error": "Invalid request method"}, status=405)  # 405 Method Not Allowed
 
 # # Update the `get_dealerships` view to render the index page with
 # a list of dealerships
